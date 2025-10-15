@@ -46,8 +46,6 @@ export default function GermanLearningPlatform() {
   const [emailValid, setEmailValid] = useState(false);
   const [nameValid, setNameValid] = useState(false);
   const [savingStatus, setSavingStatus] = useState({}); // per activity saving state
-  const [fetchingSubmissions, setFetchingSubmissions] = useState(false);
-  const [submissions, setSubmissions] = useState([]);
 
   // Toggle helpers
   const toggleSection = (id) =>
@@ -235,7 +233,7 @@ export default function GermanLearningPlatform() {
       difficulty: "Avanzado",
       color: "bg-orange-500",
       intro:
-        "Ahora aplicarás lo que aprendiste para completar un diálogo real. Es como escribir tu propio guion 🎬",
+        "Completa el diálogo usando los verbos correctamente conjugados. Debes elegir el verbo apropiado y conjugarlo según el pronombre. 💡 Hint: Lee primero todo el diálogo para entender el contexto, luego identifica qué pronombre usarías en cada espacio vacío y conjuga el verbo entre paréntesis.",
       strategy: [
         "1. Lee toda la conversación primero",
         "2. Para cada espacio: ¿Quién habla? (identifica el pronombre)",
@@ -243,6 +241,14 @@ export default function GermanLearningPlatform() {
         "4. Conjuga el verbo según el pronombre",
         "5. Verifica: ¿El verbo está en 2ª posición?",
       ],
+      dialogueTemplate: `Lena: Hallo! Wie _____ du? (heissen)
+Max: Ich _____ Max. Und du? (heissen)
+Lena: Ich _____ Lena. Woher _____ du? (kommen)
+Max: Ich _____ aus Berlin. Und du? (kommen)
+Lena: Ich _____ aus München. Wo _____ du? (wohnen)
+Max: Ich _____ in Berlin. Und was _____ du? (wohnen, machen)
+Lena: Ich _____ Studentin. Und du? (sein)
+Max: Ich _____ auch Student. (sein)`,
       example: {
         dialogue: "Caroline: Woher _____ du? (kommen)",
         solution: "kommst",
@@ -378,6 +384,14 @@ export default function GermanLearningPlatform() {
     act1_q3: "Er hat einen Hund.",
     act1_q4: "Die Katzen heißen Twix und Tiramisu.",
     act1_q5: "Er muss gehen, weil er Training hat.",
+    act4: `Lena: Hallo! Wie heißt du?
+Max: Ich heiße Max. Und du?
+Lena: Ich heiße Lena. Woher kommst du?
+Max: Ich komme aus Berlin. Und du?
+Lena: Ich komme aus München. Wo wohnst du?
+Max: Ich wohne in Berlin. Und was machst du?
+Lena: Ich bin Studentin. Und du?
+Max: Ich bin auch Student.`,
   };
 
   // -------------------------
@@ -652,37 +666,6 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
     }
   }
 
-  async function fetchMySubmissions() {
-    if (!emailValid) {
-      alert(
-        "Introduce tu correo institucional azc.uam.mx para consultar tus respuestas."
-      );
-      return;
-    }
-    if (!supabase) {
-      alert(
-        "Supabase no está configurado en este entorno. Configura REACT_APP_SUPABASE_URL y REACT_APP_SUPABASE_ANON_KEY si quieres consultar envíos."
-      );
-      return;
-    }
-    setFetchingSubmissions(true);
-    try {
-      const { data, error } = await supabase
-        .from("submissions")
-        .select("*")
-        .eq("email", email.trim().toLowerCase())
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) throw error;
-      setSubmissions(data || []);
-    } catch (err) {
-      console.error("Fetch submissions error:", err);
-      alert("Error al consultar el backend. Revisa la consola.");
-    } finally {
-      setFetchingSubmissions(false);
-    }
-  }
-
   // Local save / load (in-browser) helpers
   function saveLocally(fieldId) {
     const data = JSON.parse(
@@ -727,21 +710,24 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
         </div>
       </header>
       <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* User Info Card */}
+        {/* User Info Card - MEJORADA */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border-l-4 border-indigo-500">
-          <h2 className="text-2xl font-bold mb-3">
-            Datos del estudiante (requerido)
-          </h2>
+          <h2 className="text-2xl font-bold mb-3">👤 Datos del estudiante</h2>
           <p className="text-sm text-gray-600 mb-4">
-            Para guardar en el servidor necesitas:{" "}
-            <strong>nombre completo</strong> y{" "}
-            <strong>correo institucional</strong> (dominio{" "}
-            <code>azc.uam.mx</code>).
+            <strong>
+              ¡Hola! Necesito estos datos para que{" "}
+              <em>Ich, dein Deutschlehrer</em>, pueda:
+            </strong>
+            <br />
+            • Identificar tus respuestas y darte feedback personalizado
+            <br />
+            • Contactarte por correo si necesitas ayuda adicional
+            <br />• Llevar un registro de tu progreso en el curso
           </p>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700">
-                Nombre completo
+                Nombre completo *
               </label>
               <input
                 className={`mt-1 w-full p-3 border rounded-lg focus:outline-none ${
@@ -749,19 +735,19 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                     ? "border-green-400 ring-1 ring-green-200"
                     : "border-gray-300"
                 }`}
-                placeholder="Ej: Juana Pérez"
+                placeholder="Ej: Juana Pérez García"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
               />
               <p className="text-xs mt-1 text-gray-500">
                 {nameValid
                   ? "✅ Nombre válido"
-                  : "Ingresa al menos nombre y apellido"}
+                  : "Ingresa tu nombre y apellido completos"}
               </p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">
-                Correo institucional
+                Correo institucional *
               </label>
               <input
                 className={`mt-1 w-full p-3 border rounded-lg focus:outline-none ${
@@ -776,67 +762,35 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
               <p className="text-xs mt-1 text-gray-500">
                 {emailValid
                   ? "✅ Correo institucional válido"
-                  : "Debe terminar en @azc.uam.mx"}
+                  : "Debe terminar en @azc.uam.mx para recibir feedback"}
               </p>
-            </div>
-            <div className="flex items-end">
-              <div className="w-full">
-                <button
-                  onClick={() => {
-                    if (!nameValid || !emailValid) {
-                      alert(
-                        "Por favor completa nombre y correo institucional válido antes de continuar."
-                      );
-                      return;
-                    }
-                    // Guardado local de los datos del usuario para la sesión
-                    localStorage.setItem(
-                      "german_learning_user",
-                      JSON.stringify({ fullName, email })
-                    );
-                    alert(
-                      "✅ Datos del estudiante guardados localmente. Ahora puedes guardar respuestas en el servidor si está configurado."
-                    );
-                  }}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-semibold"
-                >
-                  💾 Guardar mis datos (local)
-                </button>
-                <button
-                  onClick={fetchMySubmissions}
-                  className="mt-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded-lg text-sm"
-                >
-                  {fetchingSubmissions
-                    ? "Consultando..."
-                    : "👁️ Consultar mis envíos guardados (servidor)"}
-                </button>
-              </div>
             </div>
           </div>
-          {/* Mostrar resultados de fetch */}
-          {submissions.length > 0 && (
-            <div className="mt-4 bg-gray-50 p-3 rounded border border-gray-200 max-h-48 overflow-auto">
-              <p className="text-sm font-semibold mb-2">
-                Tus envíos recientes:
-              </p>
-              <ul className="text-sm space-y-1">
-                {submissions.map((row) => (
-                  <li
-                    key={row.id}
-                    className="text-xs text-gray-700 border-b pb-1"
-                  >
-                    <strong>{row.activity_id}</strong> / {row.field_id} —{" "}
-                    {new Date(row.created_at).toLocaleString()}:
-                    <div className="mt-1 text-sm text-gray-600">
-                      {row.content.slice(0, 200)}
-                      {row.content.length > 200 ? "…" : ""}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                if (!nameValid || !emailValid) {
+                  alert(
+                    "Por favor completa nombre y correo institucional válido antes de continuar."
+                  );
+                  return;
+                }
+                // Guardado local de los datos del usuario para la sesión
+                localStorage.setItem(
+                  "german_learning_user",
+                  JSON.stringify({ fullName, email })
+                );
+                alert(
+                  "✅ Datos guardados. ¡Ya puedes empezar con las actividades!"
+                );
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white py-3 px-6 rounded-lg font-semibold"
+            >
+              💾 Guardar mis datos
+            </button>
+          </div>
         </div>
+
         {/* Resources */}
         <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl shadow-lg p-6 mb-8">
           <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2">
@@ -863,6 +817,7 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
             ))}
           </div>
         </div>
+
         {/* Progress */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
           <h3 className="text-xl font-bold mb-4 text-gray-800">Tu Progreso</h3>
@@ -878,6 +833,7 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
             </span>
           </div>
         </div>
+
         {/* Activities */}
         <div className="space-y-6">
           {activities.map((activity) => {
@@ -922,6 +878,7 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                         {activity.intro}
                       </p>
                     </div>
+
                     {/* Preguntas (actividad tipo Q/A) */}
                     {activity.questions && (
                       <div className="space-y-4">
@@ -1031,7 +988,8 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                         })}
                       </div>
                     )}
-                    {/* Tasks (actividad 2) */}
+
+                    {/* Tasks (actividad 2) - MEJORADA CON BOTONES */}
                     {activity.tasks && (
                       <div className="space-y-4">
                         {activity.tasks.map((task, idx) => {
@@ -1074,20 +1032,56 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                                   updateAnswer(fieldId, e.target.value)
                                 }
                               />
-                              <div className="mt-2 flex justify-between items-center">
-                                <p className="text-xs text-gray-500">
-                                  {feedback[fieldId] || "Sin feedback aún."}
-                                </p>
-                                <div className="flex gap-2">
+                              <div className="flex items-start justify-between gap-4 mt-2">
+                                <div className="flex flex-col gap-2">
                                   <button
-                                    onClick={() =>
-                                      saveAnswerToSupabase(activity.id, fieldId)
-                                    }
-                                    disabled={!emailValid || !nameValid}
-                                    className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                    onClick={() => {
+                                      const fb = generateAdvancedFeedback(
+                                        userAnswers[fieldId] || "",
+                                        fieldId
+                                      );
+                                      setFeedback((p) => ({
+                                        ...p,
+                                        [fieldId]: fb,
+                                      }));
+                                    }}
+                                    className="text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded flex items-center gap-2"
                                   >
-                                    Guardar en servidor
+                                    <Zap className="w-4 h-4" /> Revisar
                                   </button>
+                                  <button
+                                    onClick={() => saveLocally(fieldId)}
+                                    className="text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded flex items-center gap-2"
+                                  >
+                                    <Save className="w-4 h-4" /> Guardar local
+                                  </button>
+                                  <button
+                                    onClick={() => clearAnswer(fieldId)}
+                                    className="text-sm bg-red-100 hover:bg-red-200 px-3 py-1 rounded flex items-center gap-2"
+                                  >
+                                    <Trash2 className="w-4 h-4" /> Borrar
+                                  </button>
+                                </div>
+                                <div className="text-right w-2/3">
+                                  <p className="text-xs text-gray-500 whitespace-pre-line">
+                                    {feedback[fieldId] || "Sin feedback aún."}
+                                  </p>
+                                  <div className="mt-2 flex items-center gap-2 justify-end">
+                                    <button
+                                      onClick={() =>
+                                        saveAnswerToSupabase(
+                                          activity.id,
+                                          fieldId
+                                        )
+                                      }
+                                      disabled={!emailValid || !nameValid}
+                                      className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                    >
+                                      {savingStatus[fieldId] === "saving"
+                                        ? "Guardando..."
+                                        : "💾 Guardar en servidor"}
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1102,7 +1096,8 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                         )}
                       </div>
                     )}
-                    {/* Verbos (actividad 3) */}
+
+                    {/* Verbos (actividad 3) - MEJORADA CON BOTONES */}
                     {activity.verbos && (
                       <div>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -1156,23 +1151,8 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                                     updateAnswer(fieldId, e.target.value)
                                   }
                                 />
-                                <div className="mt-2 flex justify-between items-center">
-                                  <p className="text-xs text-gray-500">
-                                    {feedback[fieldId] || "Sin feedback aún."}
-                                  </p>
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={() =>
-                                        saveAnswerToSupabase(
-                                          activity.id,
-                                          fieldId
-                                        )
-                                      }
-                                      disabled={!emailValid || !nameValid}
-                                      className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                                    >
-                                      Guardar
-                                    </button>
+                                <div className="flex items-start justify-between gap-4 mt-2">
+                                  <div className="flex flex-col gap-2">
                                     <button
                                       onClick={() => {
                                         const fb = generateAdvancedFeedback(
@@ -1184,10 +1164,43 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                                           [fieldId]: fb,
                                         }));
                                       }}
-                                      className="px-3 py-1 text-sm rounded bg-yellow-100 hover:bg-yellow-200"
+                                      className="text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded flex items-center gap-2"
                                     >
-                                      Revisar
+                                      <Zap className="w-4 h-4" /> Revisar
                                     </button>
+                                    <button
+                                      onClick={() => saveLocally(fieldId)}
+                                      className="text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded flex items-center gap-2"
+                                    >
+                                      <Save className="w-4 h-4" /> Guardar local
+                                    </button>
+                                    <button
+                                      onClick={() => clearAnswer(fieldId)}
+                                      className="text-sm bg-red-100 hover:bg-red-200 px-3 py-1 rounded flex items-center gap-2"
+                                    >
+                                      <Trash2 className="w-4 h-4" /> Borrar
+                                    </button>
+                                  </div>
+                                  <div className="text-right w-2/3">
+                                    <p className="text-xs text-gray-500 whitespace-pre-line">
+                                      {feedback[fieldId] || "Sin feedback aún."}
+                                    </p>
+                                    <div className="mt-2 flex items-center gap-2 justify-end">
+                                      <button
+                                        onClick={() =>
+                                          saveAnswerToSupabase(
+                                            activity.id,
+                                            fieldId
+                                          )
+                                        }
+                                        disabled={!emailValid || !nameValid}
+                                        className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                      >
+                                        {savingStatus[fieldId] === "saving"
+                                          ? "Guardando..."
+                                          : "💾 Guardar en servidor"}
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -1196,7 +1209,8 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                         </div>
                       </div>
                     )}
-                    {/* Estrategia y textarea (actividad 4) */}
+
+                    {/* Actividad 4 - MEJORADA */}
                     {activity.strategy && (
                       <div>
                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
@@ -1227,29 +1241,24 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                             </p>
                           </div>
                         )}
+                        {activity.dialogueTemplate && (
+                          <div className="bg-white border border-gray-300 rounded-lg p-4 mb-4 font-mono text-sm">
+                            <pre className="whitespace-pre-wrap">
+                              {activity.dialogueTemplate}
+                            </pre>
+                          </div>
+                        )}
                         <textarea
                           className="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent"
                           rows="8"
-                          placeholder="Completa el diálogo aquí..."
+                          placeholder="Escribe aquí el diálogo completo con los verbos conjugados..."
                           value={userAnswers[activity.id] || ""}
                           onChange={(e) =>
                             updateAnswer(activity.id, e.target.value)
                           }
                         />
-                        <div className="mt-2 flex justify-between items-center">
-                          <p className="text-xs text-gray-500">
-                            {feedback[activity.id] || "Sin feedback aún."}
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() =>
-                                saveAnswerToSupabase(activity.id, activity.id)
-                              }
-                              disabled={!emailValid || !nameValid}
-                              className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                            >
-                              💾 Guardar respuesta en servidor
-                            </button>
+                        <div className="flex items-start justify-between gap-4 mt-2">
+                          <div className="flex flex-col gap-2">
                             <button
                               onClick={() => {
                                 const fb = generateAdvancedFeedback(
@@ -1261,15 +1270,64 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                                   [activity.id]: fb,
                                 }));
                               }}
-                              className="px-3 py-1 text-sm rounded bg-yellow-100 hover:bg-yellow-200"
+                              className="text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded flex items-center gap-2"
                             >
-                              ✅ Revisar mi texto
+                              <Zap className="w-4 h-4" /> Revisar mi texto
+                            </button>
+                            <button
+                              onClick={() => toggleSolution(activity.id)}
+                              className="text-sm bg-purple-100 hover:bg-purple-200 px-3 py-1 rounded flex items-center gap-2"
+                            >
+                              <Eye className="w-4 h-4" />{" "}
+                              {showSolution[activity.id]
+                                ? "Ocultar solución"
+                                : "Mostrar solución"}
+                            </button>
+                            <button
+                              onClick={() => saveLocally(activity.id)}
+                              className="text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded flex items-center gap-2"
+                            >
+                              <Save className="w-4 h-4" /> Guardar local
+                            </button>
+                            <button
+                              onClick={() => clearAnswer(activity.id)}
+                              className="text-sm bg-red-100 hover:bg-red-200 px-3 py-1 rounded flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" /> Borrar
                             </button>
                           </div>
+                          <div className="text-right w-2/3">
+                            <p className="text-xs text-gray-500 whitespace-pre-line">
+                              {feedback[activity.id] || "Sin feedback aún."}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 justify-end">
+                              <button
+                                onClick={() =>
+                                  saveAnswerToSupabase(activity.id, activity.id)
+                                }
+                                disabled={!emailValid || !nameValid}
+                                className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                              >
+                                {savingStatus[activity.id] === "saving"
+                                  ? "Guardando..."
+                                  : "💾 Guardar en servidor"}
+                              </button>
+                            </div>
+                          </div>
                         </div>
+                        {showSolution[activity.id] &&
+                          expectedAnswersDisplay[activity.id] && (
+                            <div className="mt-3 bg-purple-50 border border-purple-200 rounded p-3 text-sm text-gray-700">
+                              💡 <strong>Solución modelo:</strong>
+                              <pre className="whitespace-pre-wrap mt-2">
+                                {expectedAnswersDisplay[activity.id]}
+                              </pre>
+                            </div>
+                          )}
                       </div>
                     )}
-                    {/* Leonard (actividad 5) */}
+
+                    {/* Leonard (actividad 5) - MEJORADA CON BOTONES */}
                     {activity.data && (
                       <div>
                         <div className="bg-pink-50 border border-pink-200 rounded-lg p-4 mb-4">
@@ -1309,20 +1367,8 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                             updateAnswer(activity.id, e.target.value)
                           }
                         />
-                        <div className="mt-2 flex justify-between items-center">
-                          <p className="text-xs text-gray-500">
-                            {feedback[activity.id] || "Sin feedback aún."}
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() =>
-                                saveAnswerToSupabase(activity.id, activity.id)
-                              }
-                              disabled={!emailValid || !nameValid}
-                              className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                            >
-                              Guardar
-                            </button>
+                        <div className="flex items-start justify-between gap-4 mt-2">
+                          <div className="flex flex-col gap-2">
                             <button
                               onClick={() => {
                                 const fb = generateAdvancedFeedback(
@@ -1334,15 +1380,46 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                                   [activity.id]: fb,
                                 }));
                               }}
-                              className="px-3 py-1 text-sm rounded bg-yellow-100 hover:bg-yellow-200"
+                              className="text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded flex items-center gap-2"
                             >
-                              Revisar
+                              <Zap className="w-4 h-4" /> Revisar
                             </button>
+                            <button
+                              onClick={() => saveLocally(activity.id)}
+                              className="text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded flex items-center gap-2"
+                            >
+                              <Save className="w-4 h-4" /> Guardar local
+                            </button>
+                            <button
+                              onClick={() => clearAnswer(activity.id)}
+                              className="text-sm bg-red-100 hover:bg-red-200 px-3 py-1 rounded flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" /> Borrar
+                            </button>
+                          </div>
+                          <div className="text-right w-2/3">
+                            <p className="text-xs text-gray-500 whitespace-pre-line">
+                              {feedback[activity.id] || "Sin feedback aún."}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 justify-end">
+                              <button
+                                onClick={() =>
+                                  saveAnswerToSupabase(activity.id, activity.id)
+                                }
+                                disabled={!emailValid || !nameValid}
+                                className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                              >
+                                {savingStatus[activity.id] === "saving"
+                                  ? "Guardando..."
+                                  : "💾 Guardar en servidor"}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     )}
-                    {/* Actividad 6 */}
+
+                    {/* Actividad 6 - MEJORADA CON BOTONES */}
                     {activity.prompts && (
                       <div>
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
@@ -1364,20 +1441,8 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                             updateAnswer(activity.id, e.target.value)
                           }
                         />
-                        <div className="mt-2 flex justify-between items-center">
-                          <p className="text-xs text-gray-500">
-                            {feedback[activity.id] || "Sin feedback aún."}
-                          </p>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() =>
-                                saveAnswerToSupabase(activity.id, activity.id)
-                              }
-                              disabled={!emailValid || !nameValid}
-                              className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                            >
-                              Guardar
-                            </button>
+                        <div className="flex items-start justify-between gap-4 mt-2">
+                          <div className="flex flex-col gap-2">
                             <button
                               onClick={() => {
                                 const fb = generateAdvancedFeedback(
@@ -1389,14 +1454,45 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                                   [activity.id]: fb,
                                 }));
                               }}
-                              className="px-3 py-1 text-sm rounded bg-yellow-100 hover:bg-yellow-200"
+                              className="text-sm bg-yellow-100 hover:bg-yellow-200 px-3 py-1 rounded flex items-center gap-2"
                             >
-                              Revisar
+                              <Zap className="w-4 h-4" /> Revisar
                             </button>
+                            <button
+                              onClick={() => saveLocally(activity.id)}
+                              className="text-sm bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded flex items-center gap-2"
+                            >
+                              <Save className="w-4 h-4" /> Guardar local
+                            </button>
+                            <button
+                              onClick={() => clearAnswer(activity.id)}
+                              className="text-sm bg-red-100 hover:bg-red-200 px-3 py-1 rounded flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" /> Borrar
+                            </button>
+                          </div>
+                          <div className="text-right w-2/3">
+                            <p className="text-xs text-gray-500 whitespace-pre-line">
+                              {feedback[activity.id] || "Sin feedback aún."}
+                            </p>
+                            <div className="mt-2 flex items-center gap-2 justify-end">
+                              <button
+                                onClick={() =>
+                                  saveAnswerToSupabase(activity.id, activity.id)
+                                }
+                                disabled={!emailValid || !nameValid}
+                                className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                              >
+                                {savingStatus[activity.id] === "saving"
+                                  ? "Guardando..."
+                                  : "💾 Guardar en servidor"}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
                     )}
+
                     {/* Tips Section */}
                     {activity.tips && (
                       <div className="mt-6 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-300 rounded-lg p-4">
@@ -1413,6 +1509,7 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
                         </ul>
                       </div>
                     )}
+
                     {/* Mark Complete Button */}
                     <div className="mt-6 flex justify-end">
                       <button
@@ -1435,6 +1532,7 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
             );
           })}
         </div>
+
         {/* Footer / Grammar reference */}
         <div className="mt-8 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl shadow-lg p-6">
           <h3 className="text-2xl font-bold mb-4 text-gray-800">
@@ -1550,6 +1648,7 @@ Sugerencias: ${analysis.suggestions.join(" ")}`;
             </div>
           </div>
         </div>
+
         {/* Motivational Footer */}
         <div className="mt-8 bg-gradient-to-r from-green-400 to-blue-500 text-white rounded-xl shadow-lg p-6 text-center">
           <h3 className="text-2xl font-bold mb-2">¡Excelente trabajo! 🎉</h3>
